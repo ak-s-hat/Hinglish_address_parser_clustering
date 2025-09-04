@@ -11,7 +11,7 @@ The goal is to segment raw unstructured addresses into structured fields and clu
 
 ---
 
-### Workflow overview (correct order)
+### Workflow overview 
 1) LLM JSON bootstrapping (from raw address strings)
    - Use `src/multi_model_free_jsonator.py` to convert raw addresses into a structured CSV (fields: `house_number`, `road_details`, `pincode`, `complete_address`, ...).
 2) Convert to BIO tags (structured CSV → NER dataset)
@@ -262,4 +262,5 @@ Output: Final high-precision household clusters
 •	Graph-Based Clustering: Build graphs using address entity overlaps and apply community detection (e.g., Louvain) for robust clustering.
 •	LLM Finetuning: Continue fine-tuning domain-specific LLMs (e.g., on utility data, address complaints) to improve segmentation accuracy.
 •	REST API Deployment: Turn the entire pipeline into an interactive microservice accessible by billing, delivery, and marketing teams.
+
 
