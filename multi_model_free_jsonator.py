@@ -1,3 +1,13 @@
+"""
+Batch Indian address segmentation via multiple Groq LLMs with auto-failover.
+
+This module:
+- Batches raw address strings and prompts an LLM to emit strict JSON.
+- Enforces per-minute token throttling and call/token budgets per model.
+- Fails over between models on rate limits or errors.
+- Normalizes parsed JSON and saves a CSV aligned to a target schema.
+"""
+
 from langchain_groq import ChatGroq
 from langchain.prompts import ChatPromptTemplate
 from langchain.schema import HumanMessage
@@ -14,9 +24,8 @@ from tqdm import tqdm
 import time
 
 load_dotenv(override=True)
-print("API KEY FOUND?", os.getenv("GROQ_API_KEY_2") is not None)
+print("API KEY FOUND?", os.getenv("GROQ_API_KEY") is not None)
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-#running api_2 scout model on 30 addr/call
 
 # Suggested Updates to Your Code to Add Model Switching Scheduler
 
@@ -86,9 +95,24 @@ LLM_MODELS = {
         "active":False
     },
 }
-#current_model="meta-llama/llama-4-scout-17b-16e-instruct"
 # === Request with auto-failover ===
 def request_with_failover(messages):
+    """Call Groq chat API with throttling and model failover.
+
+    Resets per-minute token counters every 60 seconds, sleeps if the next
+    call would exceed tokens-per-minute, updates call/token budgets, and
+    marks models inactive upon limit breaches or errors (e.g., HTTP 429),
+    then tries the next available model.
+
+    Args:
+        messages (list[dict]): Chat messages for completion.
+
+    Returns:
+        Any: Groq chat completion response for the first successful model.
+
+    Raises:
+        RuntimeError: If all models are exhausted or fail.
+    """
     for model_name, info in LLM_MODELS.items():
         if not info["active"]:
             continue
@@ -199,6 +223,17 @@ system_prompt = {
 }
 
 def make_messages(address_block):
+    """Construct system+user messages for a batch of addresses.
+
+    The user message numbers each input line to encourage the LLM to
+    produce one JSON object per input address.
+
+    Args:
+        address_block (str): Newline-separated addresses.
+
+    Returns:
+        list[dict]: Messages suitable for Groq chat completion.
+    """
     addresses = address_block.strip().split("\n")
     numbered_input = "\n".join([f"{i+1}. {a}" for i, a in enumerate(addresses)])
     return [
@@ -218,6 +253,18 @@ batched_input = ["\n".join(addresses[i:i+15]) for i in range(0, len(addresses),1
 
 import re
 def extract_json(text):
+    """Parse LLM output into a list of JSON objects.
+
+    Tries a full JSON parse first (list or single dict). If it fails,
+    falls back to extracting brace-delimited blocks and parsing them
+    individually.
+
+    Args:
+        text (str): Raw LLM output.
+
+    Returns:
+        list[dict]: Parsed objects; empty list if none could be parsed.
+    """
     try:
         # First, try parsing the entire response as a list
         parsed = json.loads(text)
@@ -238,6 +285,18 @@ def extract_json(text):
             print(f"❌ Failed to parse:\n{match}\nError: {e}")
     return parsed
 def merge_fields(df):
+    """Merge related street/property fields into consolidated columns.
+
+    Creates `road_details` from street-like columns and `property_details`
+    from multiple property number variants, if such columns exist, and
+    drops the originals to avoid duplication.
+
+    Args:
+        df (pd.DataFrame): Input DataFrame.
+
+    Returns:
+        pd.DataFrame: DataFrame with merged columns added.
+    """
     # Fields to merge
     gali_related = ["gali", "street", "mohalla", "colony", "road", "lane_number", "street_number"]
     property_related = ["property_number", "prop_number","old_property_number"]
@@ -265,6 +324,19 @@ def merge_fields(df):
 
 
 def align_columns(df, column_order):
+    """Ensure required columns exist and are ordered before export.
+
+    Adds any missing columns with empty strings. Returns a DataFrame view
+    with known columns first, followed by any unknown columns for forward
+    compatibility.
+
+    Args:
+        df (pd.DataFrame): Input DataFrame.
+        column_order (list[str]): Desired leading columns.
+
+    Returns:
+        pd.DataFrame: Reordered DataFrame.
+    """
     # Add missing columns as empty strings
     for col in column_order:
         if col not in df.columns:
@@ -274,6 +346,15 @@ def align_columns(df, column_order):
     unknown = [c for c in df.columns if c not in column_order]
     return df[known + unknown]
 def save_to_csv(parsed_data, column_order):
+    """Normalize parsed data and write a CSV aligned to the schema.
+
+    Args:
+        parsed_data (list[dict]): Collected JSON objects from the LLM.
+        column_order (list[str]): Desired column ordering.
+
+    Side Effects:
+        Writes a CSV to the working directory and logs path and headers.
+    """
     from datetime import datetime
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     df = pd.json_normalize(parsed_data)
@@ -302,6 +383,17 @@ total_daily_tokens_used = 0
 
 
 def estimate_tokens(text):
+    """Roughly estimate token count from input text/messages.
+
+    Uses 1.3 × word count as a proxy for token count. If given a list of
+    messages, it concatenates their `content` fields first.
+
+    Args:
+        text (str | list): String or list of message dicts.
+
+    Returns:
+        int: Estimated token count.
+    """
     if isinstance(text, list):
         # Handle list of dicts (e.g., chat messages)
         text = " ".join([m.get("content", "") for m in text if isinstance(m, dict)])
@@ -316,6 +408,7 @@ token_counter = 0
 call_counter = 0
 all_parsed_jsons = []
 class TokenLimitReached(Exception):
+    """Raised when an execution exceeds a token budget."""
     pass
 
 #parsing loop
