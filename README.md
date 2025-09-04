@@ -175,7 +175,7 @@ pip install transformers datasets torch sentence-transformers faiss-cpu scikit-l
 - `src/multi_model_free_jsonator.py`: LLM auto‑failover JSON extraction and CSV export (optional path).
 
 
-###Pipeline Stages
+### Pipeline Stages
 1.Data Collection
 
 Input: 500K+ noisy, unstructured addresses (in Hinglish)
@@ -183,9 +183,9 @@ Output: Flat CSV file with ID, address columns
 
 2. 🤖 Address Segmentation using LLMs
 
-Used Groq's llama-3.1-8b-instant via LangChain
+Used Groq's llama-3.1-8b-instant via LangChain.
 Prompt-based JSON extraction with fields: house_number, floor, block, locality, landmark, pincode, etc.
-Batched and cached to handle Groq rate limits (30 calls/min, 15,000 tokens/min)
+Batched and cached to handle Groq rate limits (30 calls/min, 15,000 tokens/min).
 Output: Structured JSON per address, normalized to CSV
 
 3. 🧬 BIO Tagging for NER Training
@@ -239,14 +239,14 @@ Normalization: canonical house fields, synonym merging, token cleaning
 Output: Final high-precision household clusters
 
 
-###Discarded Approaches
+### Discarded Approaches
 
 -DistilBERT/mBERT for NER → weak results on Hinglish
 -FastText, TF-IDF, or regex-only clustering → too shallow
 -FlatIP for FAISS → RAM-hungry for 500K entries
 -One-stage clustering → overclustered mess
 
-###Learnings & Highlights
+### Learnings & Highlights
 
 -Prompt-based annotation can bootstrap large NER datasets
 -Locality-based pre-bucketing massively improves clustering performance
@@ -254,7 +254,7 @@ Output: Final high-precision household clusters
 -Custom confidence scoring enables traceable cluster quality
 
 
-###Future Enhancements:
+### Future Enhancements:
 •	Geocoding Integration: Map addresses to lat/lon coordinates via APIs (like Google Maps or OpenStreetMap) to enable geospatial validation.
 •	Confidence-based Filtering: Use cluster confidence scores to allow business users to accept/reject edge cases.
 •	NER Active Learning Loop: Feed back low-confidence model predictions into the fine-tuning pipeline for continuous improvement.
@@ -262,5 +262,6 @@ Output: Final high-precision household clusters
 •	Graph-Based Clustering: Build graphs using address entity overlaps and apply community detection (e.g., Louvain) for robust clustering.
 •	LLM Finetuning: Continue fine-tuning domain-specific LLMs (e.g., on utility data, address complaints) to improve segmentation accuracy.
 •	REST API Deployment: Turn the entire pipeline into an interactive microservice accessible by billing, delivery, and marketing teams.
+
 
 
