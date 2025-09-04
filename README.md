@@ -178,90 +178,91 @@ pip install transformers datasets torch sentence-transformers faiss-cpu scikit-l
 ### Pipeline Stages
 1.Data Collection
 
-Input: 500K+ noisy, unstructured addresses (in Hinglish)
-Output: Flat CSV file with ID, address columns
+- Input: 500K+ noisy, unstructured addresses (in Hinglish)
+- Output: Flat CSV file with ID, address columns
 
 2. 🤖 Address Segmentation using LLMs
 
-Used Groq's llama-3.1-8b-instant via LangChain.
-Prompt-based JSON extraction with fields: house_number, floor, block, locality, landmark, pincode, etc.
-Batched and cached to handle Groq rate limits (30 calls/min, 15,000 tokens/min).
-Output: Structured JSON per address, normalized to CSV
+- Used Groq's llama-3.1-8b-instant via LangChain.
+- Prompt-based JSON extraction with fields: house_number, floor, block, locality, landmark, pincode, etc.
+- Batched and cached to handle Groq rate limits (30 calls/min, 15,000 tokens/min).
+- Output: Structured JSON per address, normalized to CSV
 
 3. 🧬 BIO Tagging for NER Training
 
-Converted Groq-segmented data into token-level BIO tags
-Handled:
-Pincode float bugs
-Subword token alignment issues
-Label overlap via priority order
-Output: BIO-tagged CSV ready for NER fine-tuning
+- Converted Groq-segmented data into token-level BIO tags
+- Handled:
+  Pincode float bugs
+  Subword token alignment issues
+  Label overlap via priority order
+- Output: BIO-tagged CSV ready for NER fine-tuning
 
 4. 🎓 NER Model Fine-Tuning
 
-Model: google/muril-base-cased
-Libraries: Transformers v4.53.1, PyTorch
-Config:
-Batch size: 80
-Epochs: 10
-Used DataCollatorWithPadding and TrainingConfig
-Output: Fine-tuned NER model
+- Model: google/muril-base-cased
+- Libraries: Transformers v4.53.1, PyTorch
+- Config:
+- Batch size: 80
+- Epochs: 10
+- Used DataCollatorWithPadding and TrainingConfig
+- Output: Fine-tuned NER model
 
 5. 🔍 NER Inference & Structured Output
 
-Used HuggingFace pipeline(aggregation_strategy="simple")
-Extracted structured fields per address
-Output: Normalized address field CSV
+- Used HuggingFace pipeline(aggregation_strategy="simple")
+- Extracted structured fields per address
+- Output: Normalized address field CSV
 
 6. 🿃️‍♂️ Pre-Clustering: Manual Bucketing
 
-Grouped addresses by PINCODE → LOCALITY → AREA
-Reduced embedding computation scope
+- Grouped addresses by PINCODE → LOCALITY → AREA
+- Reduced embedding computation scope
 
 7. 🖐️ Embedding Generation
 
-Used SBERT (paraphrase-MiniLM-L6-v2) to encode locality + house context
-Normalized embeddings
+- Used SBERT (paraphrase-MiniLM-L6-v2) to encode locality + house context
+- Normalized embeddings
 
 8. 🧠 FAISS Clustering
 
-Stage 1: FAISS IVF clustering at locality level (cosine similarity ~0.97)
-Stage 2: Micro-clustering by house_number, floor, block using fuzzy match
-Output: Clustered customer ID groups
+- Stage 1: FAISS IVF clustering at locality level (cosine similarity ~0.97)
+- Stage 2: Micro-clustering by house_number, floor, block using fuzzy match
+- Output: Clustered customer ID groups
 
 9. ✅ Evaluation & Refinement
 
-Metrics:
-Cluster purity
-Average size vs noise ratio
-Manual spot-checks
-Normalization: canonical house fields, synonym merging, token cleaning
-Output: Final high-precision household clusters
+- Metrics:
+  Cluster purity
+  Average size vs noise ratio
+  Manual spot-checks
+- Normalization: canonical house fields, synonym merging, token cleaning
+- Output: Final high-precision household clusters
 
 
 ### Discarded Approaches
 
--DistilBERT/mBERT for NER → weak results on Hinglish
--FastText, TF-IDF, or regex-only clustering → too shallow
--FlatIP for FAISS → RAM-hungry for 500K entries
--One-stage clustering → overclustered mess
+- DistilBERT/mBERT for NER → weak results on Hinglish
+- FastText, TF-IDF, or regex-only clustering → too shallow
+- FlatIP for FAISS → RAM-hungry for 500K entries
+- One-stage clustering → overclustered mess
 
 ### Learnings & Highlights
 
--Prompt-based annotation can bootstrap large NER datasets
--Locality-based pre-bucketing massively improves clustering performance
--Multi-stage clustering avoids semantic vs syntactic overlap errors
--Custom confidence scoring enables traceable cluster quality
+- Prompt-based annotation can bootstrap large NER datasets
+- Locality-based pre-bucketing massively improves clustering performance
+- Multi-stage clustering avoids semantic vs syntactic overlap errors
+- Custom confidence scoring enables traceable cluster quality
 
 
 ### Future Enhancements:
-•	Geocoding Integration: Map addresses to lat/lon coordinates via APIs (like Google Maps or OpenStreetMap) to enable geospatial validation.
-•	Confidence-based Filtering: Use cluster confidence scores to allow business users to accept/reject edge cases.
-•	NER Active Learning Loop: Feed back low-confidence model predictions into the fine-tuning pipeline for continuous improvement.
-•	Multimodal Validation: Use delivery logs, billing history, or geo-tags to improve cluster validation.
-•	Graph-Based Clustering: Build graphs using address entity overlaps and apply community detection (e.g., Louvain) for robust clustering.
-•	LLM Finetuning: Continue fine-tuning domain-specific LLMs (e.g., on utility data, address complaints) to improve segmentation accuracy.
-•	REST API Deployment: Turn the entire pipeline into an interactive microservice accessible by billing, delivery, and marketing teams.
+- Geocoding Integration: Map addresses to lat/lon coordinates via APIs (like Google Maps or OpenStreetMap) to enable geospatial validation.
+- Confidence-based Filtering: Use cluster confidence scores to allow business users to accept/reject edge cases.
+- NER Active Learning Loop: Feed back low-confidence model predictions into the fine-tuning pipeline for continuous improvement.
+- Multimodal Validation: Use delivery logs, billing history, or geo-tags to improve cluster validation.
+- Graph-Based Clustering: Build graphs using address entity overlaps and apply community detection (e.g., Louvain) for robust clustering.
+- LLM Finetuning: Continue fine-tuning domain-specific LLMs (e.g., on utility data, address complaints) to improve segmentation accuracy.
+- REST API Deployment: Turn the entire pipeline into an interactive microservice accessible by billing, delivery, and marketing teams.
+
 
 
 
