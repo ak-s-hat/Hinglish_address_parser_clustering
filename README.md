@@ -252,6 +252,8 @@ pip install transformers datasets torch sentence-transformers faiss-cpu scikit-l
 - Locality-based pre-bucketing massively improves clustering performance
 - Multi-stage clustering avoids semantic vs syntactic overlap errors
 - Custom confidence scoring enables traceable cluster quality
+- This was the ner output i got a in each label
+- <img width="783" height="686" alt="image" src="https://github.com/user-attachments/assets/3ca0d276-425a-4c97-b813-de61e1b42aaf" />
 
 
 ### Future Enhancements:
@@ -262,6 +264,7 @@ pip install transformers datasets torch sentence-transformers faiss-cpu scikit-l
 - Graph-Based Clustering: Build graphs using address entity overlaps and apply community detection (e.g., Louvain) for robust clustering.
 - LLM Finetuning: Continue fine-tuning domain-specific LLMs (e.g., on utility data, address complaints) to improve segmentation accuracy.
 - REST API Deployment: Turn the entire pipeline into an interactive microservice accessible by billing, delivery, and marketing teams.
+
 
 
 
