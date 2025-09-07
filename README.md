@@ -1,4 +1,4 @@
-## Indian Address Parsing – End-to-End Workflow
+## Indian Address Parsing and Clustering – End-to-End Workflow
 
 This project builds a custom NER model for Indian address parsing, runs inference to structure raw addresses into fields, and performs clustering for canonicalization and deduplication.
 The goal is to segment raw unstructured addresses into structured fields and cluster customer IDs belonging to the same physical household—even with typos, different formats, and multilingual noise.
@@ -264,6 +264,7 @@ pip install transformers datasets torch sentence-transformers faiss-cpu scikit-l
 - Graph-Based Clustering: Build graphs using address entity overlaps and apply community detection (e.g., Louvain) for robust clustering.
 - LLM Finetuning: Continue fine-tuning domain-specific LLMs (e.g., on utility data, address complaints) to improve segmentation accuracy.
 - REST API Deployment: Turn the entire pipeline into an interactive microservice accessible by billing, delivery, and marketing teams.
+
 
 
 
