@@ -1,7 +1,6 @@
 ## Indian Address Parsing and Clustering – End-to-End Workflow
-
-This project builds a custom NER model for Indian address parsing, runs inference to structure raw addresses into fields, and performs clustering for canonicalization and deduplication.
-The goal is to segment raw unstructured addresses into structured fields and cluster customer IDs belonging to the same physical household—even with typos, different formats, and multilingual noise.
+This project takes messy Hinglish Indian addresses the way people actually type them—full of typos, mix of English/Hindi, and random formats—and turns them into clean, structured entries so you can reliably group all customers from the same household.
+Under the hood, it uses LLM‑based JSON extraction (LLMs to turn free‑text into consistent fields), BIO tagging (labeling each token as beginning/inside/outside an entity), a custom MURIL‑based NER model (Hindi‑English aware entity extractor), sentence embeddings with FAISS similarity search (vector search over addresses), and multi‑stage clustering (threshold and hierarchical grouping) for address canonicalization and deduplication.
 
 ### What’s inside
 - Training‑data generator: `src/bio_tagger.py`
@@ -264,6 +263,7 @@ pip install transformers datasets torch sentence-transformers faiss-cpu scikit-l
 - Graph-Based Clustering: Build graphs using address entity overlaps and apply community detection (e.g., Louvain) for robust clustering.
 - LLM Finetuning: Continue fine-tuning domain-specific LLMs (e.g., on utility data, address complaints) to improve segmentation accuracy.
 - REST API Deployment: Turn the entire pipeline into an interactive microservice accessible by billing, delivery, and marketing teams.
+
 
 
 
